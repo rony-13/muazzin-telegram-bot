@@ -2,6 +2,8 @@ import requests
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, filters
 from datetime import datetime, timedelta
+# importing timezone from pytz module
+from pytz import timezone
 import asyncio
 import os
 
@@ -41,9 +43,9 @@ async def send_prayer_times(update: Update, context):
         await update.message.reply_text("Usage: /prayer City Country [method]")
         return
 
-    today = datetime.now().strftime("%d-%m-%Y")
+    today = datetime.now(timezone('Asia/Dhaka')).strftime("%d-%m-%Y")
     # Get tomorrow's date
-    tomorrow = (datetime.now() + timedelta(days=1)).strftime("%d-%m-%Y")
+    tomorrow = (datetime.now(timezone('Asia/Dhaka')) + timedelta(days=1)).strftime("%d-%m-%Y")
     
     # Get today's prayer times
     today_prayer_times = get_prayer_times(city, country, today, method)
@@ -83,12 +85,12 @@ async def prayer(update: Update, context):
 # Automated prayer notifications
 async def schedule_prayer_notifications(application):
     while True:
-        now = datetime.now()
+        now = datetime.now(timezone('Asia/Dhaka'))
         # Fixed Dhuhr time at 1:30 PM
         dhuhr_time = now.replace(hour=13, minute=30, second=0, microsecond=0)
 
         # Fetch prayer times for Asr and Maghrib
-        prayer_times = get_prayer_times('Dhaka', 'Bangladesh', datetime.now().strftime("%d-%m-%Y"))  # Change to your default city and country
+        prayer_times = get_prayer_times('Dhaka', 'Bangladesh', datetime.now(timezone('Asia/Dhaka')).strftime("%d-%m-%Y"))  # Change to your default city and country
         fajr_time = datetime.strptime(prayer_times['Fajr'], '%H:%M')
         # dhuhr_time = datetime.strptime(prayer_times['Dhuhr'], '%H:%M') + timedelta(minutes=30)
         asr_time = datetime.strptime(prayer_times['Asr'], '%H:%M') + timedelta(minutes=30)
@@ -99,23 +101,23 @@ async def schedule_prayer_notifications(application):
         if now.time().strftime("%H:%M") == fajr_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Fajr. As-Salatu khairun min an-naum, As-Salatu khairun min an-naum.")
             await play_adhan_audio(application)
-            print(f'{fajr_time.time().strftime("%H:%M")}')
+            print(f'Fajr notified: {fajr_time.time().strftime("%H:%M")}')
         elif now.time().strftime("%H:%M") == dhuhr_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Dhuhr (1:30 PM).")
             await play_adhan_audio(application)
-            print(f'{dhuhr_time.time().strftime("%H:%M")}')
+            print(f'Dhuhr notified: {dhuhr_time.time().strftime("%H:%M")}')
         elif now.time().strftime("%H:%M") == asr_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Asr.")
             await play_adhan_audio(application)
-            print(f'{asr_time.time().strftime("%H:%M")}')
+            print(f'Asr notified: {asr_time.time().strftime("%H:%M")}')
         elif now.time().strftime("%H:%M") == maghrib_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Maghrib.")
             await play_adhan_audio(application)
-            print(f'{maghrib_time.time().strftime("%H:%M")}')
+            print(f'Magrib notified: {maghrib_time.time().strftime("%H:%M")}')
         elif now.time().strftime("%H:%M") == isha_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Isha.")
             await play_adhan_audio(application)
-            print(f'{isha_time.time().strftime("%H:%M")}')
+            print(f'Isha notified: {isha_time.time().strftime("%H:%M")}')
 
         # Check every minute
         await asyncio.sleep(60)  # Sleep for 60 seconds
