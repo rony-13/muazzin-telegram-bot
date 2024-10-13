@@ -88,24 +88,34 @@ async def schedule_prayer_notifications(application):
         dhuhr_time = now.replace(hour=13, minute=30, second=0, microsecond=0)
 
         # Fetch prayer times for Asr and Maghrib
-        prayer_times = get_prayer_times('Dhaka', 'Bangladesh', datetime.now().strftime("%Y-%m-%d"))  # Change to your default city and country
+        prayer_times = get_prayer_times('Dhaka', 'Bangladesh', datetime.now().strftime("%d-%m-%Y"))  # Change to your default city and country
+        fajr_time = datetime.strptime(prayer_times['Fajr'], '%H:%M')
+        # dhuhr_time = datetime.strptime(prayer_times['Dhuhr'], '%H:%M') + timedelta(minutes=30)
         asr_time = datetime.strptime(prayer_times['Asr'], '%H:%M') + timedelta(minutes=30)
         maghrib_time = datetime.strptime(prayer_times['Maghrib'], '%H:%M') + timedelta(minutes=10)
-        isha_time = datetime.strptime(prayer_times['Isha'], '%H:%M')
+        isha_time = datetime.strptime(prayer_times['Isha'], '%H:%M') + timedelta(minutes=35)
 
         # Check if it's time for any prayer and send a notification
-        if now.time() == dhuhr_time.time():
+        if now.time().strftime("%H:%M") == fajr_time.time().strftime("%H:%M"):
+            await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Fajr. As-Salatu khairun min an-naum, As-Salatu khairun min an-naum.")
+            await play_adhan_audio(application)
+            print(f'{fajr_time.time().strftime("%H:%M")}')
+        elif now.time().strftime("%H:%M") == dhuhr_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Dhuhr (1:30 PM).")
             await play_adhan_audio(application)
-        elif now.time() == asr_time.time():
+            print(f'{dhuhr_time.time().strftime("%H:%M")}')
+        elif now.time().strftime("%H:%M") == asr_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Asr.")
             await play_adhan_audio(application)
-        elif now.time() == maghrib_time.time():
+            print(f'{asr_time.time().strftime("%H:%M")}')
+        elif now.time().strftime("%H:%M") == maghrib_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Maghrib.")
             await play_adhan_audio(application)
-        elif now.time() == isha_time.time():
+            print(f'{maghrib_time.time().strftime("%H:%M")}')
+        elif now.time().strftime("%H:%M") == isha_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Isha.")
             await play_adhan_audio(application)
+            print(f'{isha_time.time().strftime("%H:%M")}')
 
         # Check every minute
         await asyncio.sleep(60)  # Sleep for 60 seconds
@@ -140,21 +150,8 @@ def main():
     # Schedule the prayer notifications in the background
     loop.create_task(schedule_prayer_notifications(application))
 
-    # Schedule the prayer notifications in the background
-    # try:
-    #     asyncio.run(schedule_prayer_notifications(application))
-    # except RuntimeError as e:
-    #     if str(e) == "This event loop is already running":
-    #         loop = asyncio.get_event_loop()
-    #         loop.create_task(schedule_prayer_notifications(application))
-    #     else:
-    #         raise e
-
     # Start the bot using polling
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-    # Start the bot using polling
-    # await application.start_polling()
-    # await application.idle()  # Keep the bot running
 
 if __name__ == '__main__':
     # No need for asyncio.run() here, simply call the main coroutine
