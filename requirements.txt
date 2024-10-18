@@ -1,2 +1,4 @@
-python-telegram-bot
-requests
+deep-translator==1.11.4
+python-telegram-bot==21.6
+pytz==2024.2
+requests==2.32.3
