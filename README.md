@@ -68,6 +68,7 @@ The bot will automatically start polling Telegram updates and respond to command
 - `/start` - Start the bot and see instructions.
 - `/prayer City Country [method]` - Get prayer times for your location.
   Example: `/prayer Dhaka Bangladesh`
+- `/hadith` - Get random times for your locationhadith from Sahih Bukhari.
 
 ### Automatic Features
 
