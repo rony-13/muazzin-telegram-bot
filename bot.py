@@ -1,14 +1,35 @@
+import asyncio
+from deep_translator import GoogleTranslator
+from datetime import datetime, timedelta
+import json
+import os
+# importing timezone from pytz module
+from pytz import timezone
+import re
 import requests
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, filters
-from datetime import datetime, timedelta
-# importing timezone from pytz module
-from pytz import timezone
-import asyncio
-import os
+from telegram.constants import ParseMode
 
 TELEGRAM_BOT_TOKEN = 'your_telegram_bot_token_here'  # Your Telegram Bot token
 CHAT_ID = 'your_telegram_group_id'
+
+# Initialize translator
+translator = GoogleTranslator(source='en', target='bn')
+
+def escape_markdown(text):
+    """
+    Helper function to escape special characters for Telegram MarkdownV2.
+    """
+    escape_chars = r'_*[]~`>#+=|{}'
+    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
+
+# Function to get random bukhari hadith from random-hadith-generator API without API key
+def get_random_hadith():
+    response_data = requests.get('https://random-hadith-generator.vercel.app/bukhari/')
+    random_hadith = json.loads(response_data.text)
+
+    return random_hadith
 
 # Function to get prayer times from Aladhan API without API key
 def get_prayer_times(city, country, date, method=1):
@@ -82,12 +103,48 @@ async def start(update: Update, context):
 async def prayer(update: Update, context):
     await send_prayer_times(update, context)
 
+# Hadith command handler
+async def hadith(update: Update, context):
+    random_hadith = get_random_hadith()
+
+    # Hadith Format
+    book = random_hadith['data']['book']
+    bookName = random_hadith['data']['bookName']
+    chapterName = random_hadith['data']['chapterName']
+    hadith_english = random_hadith['data']['hadith_english']
+    header = random_hadith['data']['header']
+    refno = random_hadith['data']['refno']
+
+    html_message = f"""
+    <b>Book:</b> <b>{book}</b>\n
+    <b>Book Name:</b> {bookName}\n
+    <b>Chapter Name:</b> {chapterName}\n
+    <b>Hadith (English):</b> {hadith_english} \n
+    <b>Narrator:</b> {header}\n
+    <b>Reference:</b> <b>{refno}</b>
+    """
+
+    markdown_message = (
+        f"*Book:* {escape_markdown(book.strip())}\n"
+        f"*Book Name:* {escape_markdown(bookName.strip())}\n"
+        f"*Chapter Name:* {escape_markdown(chapterName.strip().replace('Chapter:',''))}\n\n"
+        f"*Narrator:* {escape_markdown(header.strip())}\n"
+        f"*Hadith (English):* {escape_markdown(hadith_english.strip())}\n\n"
+        f"*Reference:* *{escape_markdown(refno)}*"
+    )
+
+    # Translate the markdown message to Bengali
+    translated_message = translator.translate(markdown_message.replace("English","Bengali"))
+    await update.message.reply_text(text=markdown_message, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(text=translated_message, parse_mode=ParseMode.MARKDOWN)
+
 # Automated prayer notifications
 async def schedule_prayer_notifications(application):
     while True:
         now = datetime.now(timezone('Asia/Dhaka'))
         # Fixed Dhuhr time at 1:30 PM
         dhuhr_time = now.replace(hour=13, minute=30, second=0, microsecond=0)
+        hadith_time = now.replace(hour=14, minute=00, second=0, microsecond=0)
 
         # Fetch prayer times for Asr and Maghrib
         prayer_times = get_prayer_times('Dhaka', 'Bangladesh', datetime.now(timezone('Asia/Dhaka')).strftime("%d-%m-%Y"))  # Change to your default city and country
@@ -106,6 +163,40 @@ async def schedule_prayer_notifications(application):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Dhuhr (1:30 PM).")
             await play_adhan_audio(application)
             print(f'Dhuhr notified: {dhuhr_time.time().strftime("%H:%M")}')
+        elif now.time().strftime("%H:%M") == hadith_time.time().strftime("%H:%M"):
+            random_hadith = get_random_hadith()
+
+            # Hadith Format
+            book = random_hadith['data']['book']
+            bookName = random_hadith['data']['bookName']
+            chapterName = random_hadith['data']['chapterName']
+            hadith_english = random_hadith['data']['hadith_english']
+            header = random_hadith['data']['header']
+            refno = random_hadith['data']['refno']
+
+            html_message = f"""
+            <b>Book:</b> <b>{book}</b>\n
+            <b>Book Name:</b> {bookName}\n
+            <b>Chapter Name:</b> {chapterName}\n
+            <b>Hadith (English):</b> {hadith_english} \n
+            <b>Narrator:</b> {header}\n
+            <b>Reference:</b> <b>{refno}</b>
+            """
+
+            markdown_message = (
+                f"*Book:* {escape_markdown(book.strip())}\n"
+                f"*Book Name:* {escape_markdown(bookName.strip())}\n"
+                f"*Chapter Name:* {escape_markdown(chapterName.strip().replace('Chapter:',''))}\n\n"
+                f"*Narrator:* {escape_markdown(header.strip())}\n"
+                f"*Hadith (English):* {escape_markdown(hadith_english.strip())}\n\n"
+                f"*Reference:* *{escape_markdown(refno)}*"
+            )
+
+            # Translate the markdown message to Bengali
+            translated_message = translator.translate(markdown_message.replace("English","Bengali"))
+            await application.bot.send_message(chat_id=CHAT_ID, text=markdown_message, parse_mode=ParseMode.MARKDOWN)
+            await application.bot.send_message(chat_id=CHAT_ID, text=translated_message, parse_mode=ParseMode.MARKDOWN)
+            print(f'Hadith Posted: {hadith_time.time().strftime("%H:%M")}')
         elif now.time().strftime("%H:%M") == asr_time.time().strftime("%H:%M"):
             await application.bot.send_message(chat_id=CHAT_ID, text="It's time for Asr.")
             await play_adhan_audio(application)
@@ -141,6 +232,7 @@ def main():
     # Add the start and prayer handlers
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('prayer', prayer))
+    application.add_handler(CommandHandler('hadith', hadith))
 
     # Create a new event loop if no loop is currently running
     try:
