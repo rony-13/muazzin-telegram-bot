@@ -33,7 +33,10 @@ def get_random_hadith():
 
 # Function to get prayer times from Aladhan API without API key
 def get_prayer_times(city, country, date, method=1):
-    url = f"https://api.aladhan.com/v1/timingsByCity/{date}?city={city}&country={country}&method={method}&school=1&timezonestring&=Asia/Dhaka"
+    url = (
+        f"https://api.aladhan.com/v1/timingsByCity/{date}?"
+        f"city={city}&country={country}&method={method}&school=1&timezonestring=Asia/Dhaka"
+    )
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()['data']['timings']
